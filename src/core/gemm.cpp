@@ -72,4 +72,60 @@ void gemm_tiled_fused(size_t M, size_t N, size_t K,
     }
 }
 
+// Tile-level implementation using tTile to make tile ops explicit
+void gemm_tiled_fused_tiles(size_t M, size_t N, size_t K,
+                           const std::vector<float>& A, const std::vector<float>& B, std::vector<float>& C,
+                           size_t tileM, size_t tileN, size_t tileK,
+                           const std::vector<float>* bias,
+                           bool apply_relu,
+                           tType::Precision precision) {
+    std::fill(C.begin(), C.end(), 0.0f);
+    // iterate over tiles and use tTile for local operations
+    for (size_t ii = 0; ii < M; ii += tileM) {
+        size_t mm = std::min(tileM, M - ii);
+        for (size_t jj = 0; jj < N; jj += tileN) {
+            size_t nn = std::min(tileN, N - jj);
+            // initialize C_tile
+            tTile C_tile({mm, nn});
+            for (size_t kk = 0; kk < K; kk += tileK) {
+                size_t kk_len = std::min(tileK, K - kk);
+                // extract tiles A_tile (mm x kk_len) and B_tile (kk_len x nn)
+                tTile A_tile({mm, kk_len});
+                tTile B_tile({kk_len, nn});
+                // copy data into tiles
+                for (size_t i = 0; i < mm; ++i) {
+                    for (size_t k = 0; k < kk_len; ++k) {
+                        A_tile.data()[i*kk_len + k] = A[(ii + i)*K + (kk + k)];
+                    }
+                }
+                for (size_t k = 0; k < kk_len; ++k) {
+                    for (size_t j = 0; j < nn; ++j) {
+                        B_tile.data()[k*nn + j] = B[(kk + k)*N + (jj + j)];
+                    }
+                }
+
+                // compute local matmul on tile and accumulate into C_tile
+                for (size_t i = 0; i < mm; ++i) {
+                    for (size_t k = 0; k < kk_len; ++k) {
+                        float a = quantize_sim(A_tile.data()[i*kk_len + k], precision);
+                        for (size_t j = 0; j < nn; ++j) {
+                            float b = quantize_sim(B_tile.data()[k*nn + j], precision);
+                            C_tile.data()[i*nn + j] += a * b;
+                        }
+                    }
+                }
+            }
+            // apply fusion and write back
+            for (size_t i = 0; i < mm; ++i) {
+                for (size_t j = 0; j < nn; ++j) {
+                    size_t off = (ii + i)*N + (jj + j);
+                    if (bias) C_tile.data()[i*nn + j] += (*bias)[jj + j];
+                    if (apply_relu && C_tile.data()[i*nn + j] < 0.0f) C_tile.data()[i*nn + j] = 0.0f;
+                    C[off] = quantize_sim(C_tile.data()[i*nn + j], precision);
+                }
+            }
+        }
+    }
+}
+
 } // namespace ladder

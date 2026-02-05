@@ -17,4 +17,12 @@ void gemm_tiled_fused(size_t M, size_t N, size_t K,
                       bool apply_relu = false,
                       tType::Precision precision = tType::Precision::FP32);
 
+// Tile-level variant that uses tTile objects for per-tile operations
+void gemm_tiled_fused_tiles(size_t M, size_t N, size_t K,
+                           const std::vector<float>& A, const std::vector<float>& B, std::vector<float>& C,
+                           size_t tileM, size_t tileN, size_t tileK,
+                           const std::vector<float>* bias = nullptr,
+                           bool apply_relu = false,
+                           tType::Precision precision = tType::Precision::FP32);
+
 } // namespace ladder

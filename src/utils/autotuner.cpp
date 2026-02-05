@@ -3,6 +3,8 @@
 #include "profiling.h"
 #include <iostream>
 #include <limits>
+#include <fstream>
+#include <iomanip>
 
 namespace ladder {
 
@@ -16,6 +18,8 @@ TuningResult AutoTuner::tuneGEMM(size_t M, size_t N, size_t K,
                                  int repeats) {
     TuningResult best{0,0,0,std::numeric_limits<double>::infinity()};
     Profiler p;
+    std::ofstream out("autotune_results.csv", std::ios::app);
+    if (out) out << "prec,fuse,tm,tn,tk,ms\n";
     for (size_t tm : tileMs) for (size_t tn : tileNs) for (size_t tk : tileKs) {
         // skip invalid tile sizes
         if (tm == 0 || tn == 0 || tk == 0) continue;
@@ -31,6 +35,7 @@ TuningResult AutoTuner::tuneGEMM(size_t M, size_t N, size_t K,
         if (avg < best.ms) {
             best = TuningResult{tm,tn,tk,avg};
         }
+        if (out) out << "FP32,"<< (apply_relu?1:0) <<","<<tm<<","<<tn<<","<<tk<<","<<std::fixed<<std::setprecision(6)<<avg<<"\n";
     }
     std::cout << "Best tile: ("<<best.tileM<<","<<best.tileN<<","<<best.tileK<<") ms="<<best.ms<<"\n";
     return best;
@@ -47,6 +52,8 @@ TuningResult AutoTuner::tuneGEMMAdvanced(size_t M, size_t N, size_t K,
                                          int repeats) {
     TuningResult best{0,0,0,std::numeric_limits<double>::infinity()};
     Profiler p;
+    std::ofstream out("autotune_results.csv", std::ios::app);
+    if (out) out << "prec,fuse,tm,tn,tk,ms\n";
     for (auto prec : precisions) {
         for (bool fuse_relu : fuse_relu_options) {
             for (size_t tm : tileMs) for (size_t tn : tileNs) for (size_t tk : tileKs) {
@@ -63,6 +70,7 @@ TuningResult AutoTuner::tuneGEMMAdvanced(size_t M, size_t N, size_t K,
                 if (avg < best.ms) {
                     best = TuningResult{tm,tn,tk,avg};
                 }
+                if (out) out << (int)prec << "," << (fuse_relu?1:0) << ","<<tm<<","<<tn<<","<<tk<<","<<std::fixed<<std::setprecision(6)<<avg<<"\n";
             }
         }
     }
