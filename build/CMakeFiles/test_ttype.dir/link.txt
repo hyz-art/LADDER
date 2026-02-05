@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/test_ttype.dir/test/test_ttype.cpp.o -o test_ttype  libladder.a 

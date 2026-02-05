@@ -1,0 +1,98 @@
+Start testing: Feb 05 13:29 UTC
+----------------------------------------------------------
+1/4 Testing: ttype
+1/4 Test: ttype
+Command: "/hyz/mlir/LADDER/build/test_ttype"
+Directory: /hyz/mlir/LADDER/build
+"ttype" start time: Feb 05 13:29 UTC
+Output:
+----------------------------------------------------------
+tType precision: FP8
+convert example: 2
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ttype" end time: Feb 05 13:29 UTC
+"ttype" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/4 Testing: ttile
+2/4 Test: ttile
+Command: "/hyz/mlir/LADDER/build/test_ttile"
+Directory: /hyz/mlir/LADDER/build
+"ttile" start time: Feb 05 13:29 UTC
+Output:
+----------------------------------------------------------
+tile size: 16
+tile new size after pad: 24
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"ttile" end time: Feb 05 13:29 UTC
+"ttile" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/4 Testing: scheduler
+3/4 Test: scheduler
+Command: "/hyz/mlir/LADDER/build/test_scheduler"
+Directory: /hyz/mlir/LADDER/build
+"scheduler" start time: Feb 05 13:29 UTC
+Output:
+----------------------------------------------------------
+Scheduler: GenericScheduler
+Running generic schedule...
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"scheduler" end time: Feb 05 13:29 UTC
+"scheduler" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/4 Testing: gemm
+4/4 Test: gemm
+Command: "/hyz/mlir/LADDER/build/test_gemm"
+Directory: /hyz/mlir/LADDER/build
+"gemm" start time: Feb 05 13:29 UTC
+Output:
+----------------------------------------------------------
+tile (8,8,8) avg ms: 136.203
+tile (8,8,16) avg ms: 135.897
+tile (8,8,32) avg ms: 135.921
+tile (8,16,8) avg ms: 130.455
+tile (8,16,16) avg ms: 130.336
+tile (8,16,32) avg ms: 131.462
+tile (8,32,8) avg ms: 132.896
+tile (8,32,16) avg ms: 128.119
+tile (8,32,32) avg ms: 133.29
+tile (16,8,8) avg ms: 140.206
+tile (16,8,16) avg ms: 140.145
+tile (16,8,32) avg ms: 137.907
+tile (16,16,8) avg ms: 129.978
+tile (16,16,16) avg ms: 130.046
+tile (16,16,32) avg ms: 130.665
+tile (16,32,8) avg ms: 127.26
+tile (16,32,16) avg ms: 127.437
+tile (16,32,32) avg ms: 128.19
+tile (32,8,8) avg ms: 136.004
+tile (32,8,16) avg ms: 137.934
+tile (32,8,32) avg ms: 137.803
+tile (32,16,8) avg ms: 132.277
+tile (32,16,16) avg ms: 130.459
+tile (32,16,32) avg ms: 131.661
+tile (32,32,8) avg ms: 128.591
+tile (32,32,16) avg ms: 127.197
+tile (32,32,32) avg ms: 127.646
+Best tile: (32,32,16) ms=127.197
+Selected best tile: (32,32,16) ms=127.197
+<end of output>
+Test time =   7.16 sec
+----------------------------------------------------------
+Test Passed.
+"gemm" end time: Feb 05 13:29 UTC
+"gemm" time elapsed: 00:00:07
+----------------------------------------------------------
+
+End testing: Feb 05 13:29 UTC
