@@ -34,6 +34,30 @@ python3 tools/onnx_mlir_to_ladder_ir.py --onnx path/to/model.onnx --out-prefix l
 
 [docs/ladder_dialect.md](docs/ladder_dialect.md)
 
+## 调度原语示例
+
+示例文件：
+
+[examples/ladder_schedule.mlir](examples/ladder_schedule.mlir)
+
+可用 ladder-opt 直接解析：
+
+```bash
+./build/ladder-opt examples/ladder_schedule.mlir -o /tmp/ladder_schedule_out.mlir
+```
+
+## Tile-level Ops 示例
+
+示例文件：
+
+[examples/ladder_tile_ops.mlir](examples/ladder_tile_ops.mlir)
+
+运行：
+
+```bash
+./build/ladder-opt examples/ladder_tile_ops.mlir -o /tmp/ladder_tile_ops_out.mlir
+```
+
 ## 闭环运行（MLIR-like → GEMM）
 
 构建：

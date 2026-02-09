@@ -3,7 +3,57 @@
 #include <algorithm>
 #include <functional>
 
+#ifdef LADDER_ENABLE_CUDA
+#include <cuda_runtime.h>
+#endif
+
 namespace ladder {
+
+#ifdef LADDER_ENABLE_CUDA
+static void cudaCheck(cudaError_t err, const char *msg) {
+    if (err != cudaSuccess) {
+        (void)msg;
+        // In prototype, avoid throwing; consume error for robustness.
+        cudaGetLastError();
+    }
+}
+#endif
+
+struct tTile::DeviceBuffer {
+#ifdef LADDER_ENABLE_CUDA
+    void *ptr = nullptr;
+    size_t bytes = 0;
+    DeviceBuffer() = default;
+    explicit DeviceBuffer(size_t b) : bytes(b) {
+        cudaCheck(cudaMalloc(&ptr, bytes), "cudaMalloc");
+    }
+    ~DeviceBuffer() {
+        if (ptr) cudaFree(ptr);
+    }
+    DeviceBuffer(const DeviceBuffer&) = delete;
+    DeviceBuffer& operator=(const DeviceBuffer&) = delete;
+    DeviceBuffer(DeviceBuffer&& other) noexcept {
+        ptr = other.ptr;
+        bytes = other.bytes;
+        other.ptr = nullptr;
+        other.bytes = 0;
+    }
+    DeviceBuffer& operator=(DeviceBuffer&& other) noexcept {
+        if (this != &other) {
+            if (ptr) cudaFree(ptr);
+            ptr = other.ptr;
+            bytes = other.bytes;
+            other.ptr = nullptr;
+            other.bytes = 0;
+        }
+        return *this;
+    }
+#else
+    size_t bytes = 0;
+    DeviceBuffer() = default;
+    explicit DeviceBuffer(size_t b) : bytes(b) {}
+#endif
+};
 
 static size_t product(const std::vector<size_t>& v) {
     if (v.empty()) return 0;
@@ -14,6 +64,26 @@ tTile::tTile(const std::vector<size_t>& shape) : shape_(shape) {
     size_t s = product(shape_);
     data_.assign(s, 0.0f);
 }
+
+tTile::tTile(const tTile& other)
+    : shape_(other.shape_),
+      data_(other.data_),
+      layout_(other.layout_),
+      layout_params_(other.layout_params_),
+      device_(nullptr) {}
+
+tTile& tTile::operator=(const tTile& other) {
+    if (this != &other) {
+        shape_ = other.shape_;
+        data_ = other.data_;
+        layout_ = other.layout_;
+        layout_params_ = other.layout_params_;
+        device_.reset();
+    }
+    return *this;
+}
+
+tTile::~tTile() = default;
 
 const std::vector<size_t>& tTile::shape() const { return shape_; }
 
@@ -45,6 +115,74 @@ void tTile::pad(size_t dim, size_t pad_before, size_t pad_after, float value) {
 template<typename Func>
 void tTile::map(Func f) {
     for (auto &v : data_) v = f(v);
+}
+
+void tTile::setLayout(LayoutKind kind, const std::vector<size_t>& params) {
+    layout_ = kind;
+    layout_params_ = params;
+}
+
+tTile::LayoutKind tTile::layoutKind() const { return layout_; }
+
+const std::vector<size_t>& tTile::layoutParams() const { return layout_params_; }
+
+tTile tTile::copyToLocal() const {
+    tTile out(*this);
+#ifdef LADDER_ENABLE_CUDA
+    size_t bytes = out.data_.size() * sizeof(float);
+    if (bytes == 0) return out;
+    out.device_ = std::make_unique<DeviceBuffer>(bytes);
+    if (out.device_ && out.device_->ptr) {
+        cudaCheck(cudaMemcpy(out.device_->ptr, out.data_.data(), bytes, cudaMemcpyHostToDevice), "cudaMemcpy H2D");
+    }
+#endif
+    return out;
+}
+
+tTile tTile::copyToGlobal() const {
+    tTile out(*this);
+#ifdef LADDER_ENABLE_CUDA
+    if (device_ && device_->ptr) {
+        size_t bytes = out.data_.size() * sizeof(float);
+        cudaCheck(cudaMemcpy(out.data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost), "cudaMemcpy D2H");
+    }
+#endif
+    return out;
+}
+
+void tTile::prefetch(int level) const {
+    (void)level;
+#ifdef LADDER_ENABLE_CUDA
+    if (device_ && device_->ptr) {
+        int dev = 0;
+        cudaCheck(cudaGetDevice(&dev), "cudaGetDevice");
+        cudaCheck(cudaMemPrefetchAsync(device_->ptr, device_->bytes, dev, nullptr), "cudaMemPrefetchAsync");
+    }
+#endif
+}
+
+tTile tTile::asyncCopyToLocal() const {
+    tTile out(*this);
+#ifdef LADDER_ENABLE_CUDA
+    size_t bytes = out.data_.size() * sizeof(float);
+    if (bytes == 0) return out;
+    out.device_ = std::make_unique<DeviceBuffer>(bytes);
+    if (out.device_ && out.device_->ptr) {
+        cudaCheck(cudaMemcpyAsync(out.device_->ptr, out.data_.data(), bytes, cudaMemcpyHostToDevice, nullptr), "cudaMemcpyAsync H2D");
+    }
+#endif
+    return out;
+}
+
+tTile tTile::asyncCopyToGlobal() const {
+    tTile out(*this);
+#ifdef LADDER_ENABLE_CUDA
+    if (device_ && device_->ptr) {
+        size_t bytes = out.data_.size() * sizeof(float);
+        cudaCheck(cudaMemcpyAsync(out.data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost, nullptr), "cudaMemcpyAsync D2H");
+    }
+#endif
+    return out;
 }
 
 // explicit instantiation for common lambdas
