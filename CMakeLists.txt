@@ -28,6 +28,13 @@ target_link_libraries(test_ttile PRIVATE ladder)
 target_link_libraries(test_scheduler PRIVATE ladder)
 target_link_libraries(test_gemm PRIVATE ladder)
 
+# example autotune runner
+add_executable(run_autotune tools/run_autotune.cpp)
+target_link_libraries(run_autotune PRIVATE ladder)
+
+add_executable(run_ladder_ir tools/run_ladder_ir.cpp)
+target_link_libraries(run_ladder_ir PRIVATE ladder)
+
 # 添加测试
 add_test(NAME ttype COMMAND test_ttype)
 add_test(NAME ttile COMMAND test_ttile)

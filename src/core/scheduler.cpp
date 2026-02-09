@@ -1,5 +1,6 @@
 #include "scheduler.h"
 #include <algorithm>
+#include <cmath>
 
 namespace ladder {
 
@@ -14,23 +15,6 @@ std::tuple<size_t,size_t,size_t> Scheduler::recommendTiles(size_t M, size_t N, s
     size_t tileN = std::min(tile_side, N);
     size_t tileK = std::min((size_t)32, K);
     return {tileM, tileN, tileK};
-}
-
-} // namespace ladder
-#include "scheduler.h"
-#include <iostream>
-
-namespace ladder {
-
-class GenericScheduler : public Scheduler {
-public:
-    std::string name() const override { return "GenericScheduler"; }
-    void schedule() override { std::cout << "Running generic schedule...\n"; }
-};
-
-// factory for convenience
-std::unique_ptr<Scheduler> makeDefaultScheduler() {
-    return std::unique_ptr<Scheduler>(new GenericScheduler());
 }
 
 } // namespace ladder

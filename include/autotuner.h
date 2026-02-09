@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstddef>
 #include "ttype.h"
+#include "scheduler.h"
 
 namespace ladder {
 
@@ -32,6 +33,16 @@ public:
                                   const std::vector<bool>& fuse_relu_options,
                                   const std::vector<float>* bias = nullptr,
                                   int repeats = 3);
+
+    // Use Scheduler to propose candidate tile triples and run an advanced tune.
+    TuningResult tuneGEMMWithScheduler(size_t M, size_t N, size_t K,
+                                       const std::vector<float>& A, const std::vector<float>& B, std::vector<float>& C,
+                                       const DeviceInfo& dev,
+                                       const std::vector<tType::Precision>& precisions,
+                                       const std::vector<bool>& fuse_relu_options,
+                                       size_t numCandidates = 12,
+                                       const std::vector<float>* bias = nullptr,
+                                       int repeats = 3);
 };
 
 } // namespace ladder
