@@ -14,6 +14,20 @@ python3 tools/onnx_to_ladder_ir.py --out-prefix ladder_ir
 python3 tools/onnx_to_ladder_ir.py --onnx path/to/model.onnx --out-prefix ladder_ir
 ```
 
+生成一个简单的 GEMM ONNX 模型：
+
+```bash
+python3 tools/make_simple_gemm_onnx.py --out simple_gemm.onnx
+```
+
+## 前端导出（ONNX → onnx-mlir → ladder IR）
+
+使用 onnx-mlir 生成 ONNX-MLIR，并从中抽取 GEMM 形状后生成 ladder IR：
+
+```bash
+python3 tools/onnx_mlir_to_ladder_ir.py --onnx path/to/model.onnx --out-prefix ladder_ir
+```
+
 ## 闭环运行（MLIR-like → GEMM）
 
 构建：
