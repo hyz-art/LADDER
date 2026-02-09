@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(LADDER VERSION 0.1 LANGUAGES CXX)
+project(LADDER VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+option(LADDER_ENABLE_MLIR "Enable MLIR dialect and passes" ON)
 
 # 查找源文件
 aux_source_directory(src/core CORE_SOURCES)
@@ -14,6 +16,23 @@ aux_source_directory(src/utils UTIL_SOURCES)
 add_library(ladder ${CORE_SOURCES} ${BACKEND_SOURCES} ${COMPILER_SOURCES} ${UTIL_SOURCES})
 # 设置头文件路径（在库创建之后）
 target_include_directories(ladder PUBLIC ${PROJECT_SOURCE_DIR}/include)
+
+if(LADDER_ENABLE_MLIR)
+	if(NOT MLIR_DIR AND EXISTS "/hyz/project/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib/cmake/mlir/MLIRConfig.cmake")
+		set(MLIR_DIR "/hyz/project/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib/cmake/mlir")
+	endif()
+	find_package(MLIR QUIET CONFIG)
+	if(MLIR_FOUND)
+		message(STATUS "Found MLIR: ${MLIR_DIR}")
+		list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+		include(TableGen)
+		include(AddMLIR)
+		include(AddLLVM)
+		add_subdirectory(mlir)
+	else()
+		message(WARNING "MLIR not found; ladder dialect/pass will not be built.")
+	endif()
+endif()
 
 # 设置测试目标
 enable_testing()
