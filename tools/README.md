@@ -28,6 +28,12 @@ python3 tools/make_simple_gemm_onnx.py --out simple_gemm.onnx
 python3 tools/onnx_mlir_to_ladder_ir.py --onnx path/to/model.onnx --out-prefix ladder_ir
 ```
 
+## 方言语义（草案）
+
+详见：
+
+[docs/ladder_dialect.md](docs/ladder_dialect.md)
+
 ## 闭环运行（MLIR-like → GEMM）
 
 构建：
