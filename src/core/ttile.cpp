@@ -17,6 +17,23 @@ static void cudaCheck(cudaError_t err, const char *msg) {
         cudaGetLastError();
     }
 }
+
+static cudaStream_t getOrCreateStream(cudaStream_t stream, bool &owned) {
+    if (stream) {
+        owned = false;
+        return stream;
+    }
+    cudaStream_t created = nullptr;
+    cudaCheck(cudaStreamCreateWithFlags(&created, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
+    owned = true;
+    return created;
+}
+
+static void recordEventIfNeeded(cudaEvent_t event, cudaStream_t stream) {
+    if (event && stream) {
+        cudaCheck(cudaEventRecord(event, stream), "cudaEventRecord");
+    }
+}
 #endif
 
 struct tTile::DeviceBuffer {
@@ -126,60 +143,93 @@ tTile::LayoutKind tTile::layoutKind() const { return layout_; }
 
 const std::vector<size_t>& tTile::layoutParams() const { return layout_params_; }
 
-tTile tTile::copyToLocal() const {
+tTile tTile::copyToLocal(CudaStream stream, CudaEvent event) const {
     tTile out(*this);
 #ifdef LADDER_ENABLE_CUDA
     size_t bytes = out.data_.size() * sizeof(float);
     if (bytes == 0) return out;
     out.device_ = std::make_unique<DeviceBuffer>(bytes);
     if (out.device_ && out.device_->ptr) {
-        cudaCheck(cudaMemcpy(out.device_->ptr, out.data_.data(), bytes, cudaMemcpyHostToDevice), "cudaMemcpy H2D");
+        bool owned = false;
+        auto s = getOrCreateStream(stream, owned);
+        cudaCheck(cudaMemcpyAsync(out.device_->ptr, out.data_.data(), bytes, cudaMemcpyHostToDevice, s), "cudaMemcpyAsync H2D");
+        recordEventIfNeeded(event, s);
+        if (owned) {
+            cudaCheck(cudaStreamSynchronize(s), "cudaStreamSynchronize");
+            cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+        }
     }
 #endif
     return out;
 }
 
-tTile tTile::copyToGlobal() const {
+tTile tTile::copyToGlobal(CudaStream stream, CudaEvent event) const {
     tTile out(*this);
 #ifdef LADDER_ENABLE_CUDA
     if (device_ && device_->ptr) {
         size_t bytes = out.data_.size() * sizeof(float);
-        cudaCheck(cudaMemcpy(out.data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost), "cudaMemcpy D2H");
+        bool owned = false;
+        auto s = getOrCreateStream(stream, owned);
+        cudaCheck(cudaMemcpyAsync(out.data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost, s), "cudaMemcpyAsync D2H");
+        recordEventIfNeeded(event, s);
+        if (owned) {
+            cudaCheck(cudaStreamSynchronize(s), "cudaStreamSynchronize");
+            cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+        }
     }
 #endif
     return out;
 }
 
-void tTile::prefetch(int level) const {
+void tTile::prefetch(int level, CudaStream stream, CudaEvent event) const {
     (void)level;
 #ifdef LADDER_ENABLE_CUDA
     if (device_ && device_->ptr) {
         int dev = 0;
         cudaCheck(cudaGetDevice(&dev), "cudaGetDevice");
-        cudaCheck(cudaMemPrefetchAsync(device_->ptr, device_->bytes, dev, nullptr), "cudaMemPrefetchAsync");
+        bool owned = false;
+        auto s = getOrCreateStream(stream, owned);
+        cudaCheck(cudaMemPrefetchAsync(device_->ptr, device_->bytes, dev, s), "cudaMemPrefetchAsync");
+        recordEventIfNeeded(event, s);
+        if (owned) {
+            cudaCheck(cudaStreamSynchronize(s), "cudaStreamSynchronize");
+            cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+        }
     }
 #endif
 }
 
-tTile tTile::asyncCopyToLocal() const {
+tTile tTile::asyncCopyToLocal(CudaStream stream, CudaEvent event) const {
     tTile out(*this);
 #ifdef LADDER_ENABLE_CUDA
     size_t bytes = out.data_.size() * sizeof(float);
     if (bytes == 0) return out;
     out.device_ = std::make_unique<DeviceBuffer>(bytes);
     if (out.device_ && out.device_->ptr) {
-        cudaCheck(cudaMemcpyAsync(out.device_->ptr, out.data_.data(), bytes, cudaMemcpyHostToDevice, nullptr), "cudaMemcpyAsync H2D");
+        bool owned = false;
+        auto s = getOrCreateStream(stream, owned);
+        cudaCheck(cudaMemcpyAsync(out.device_->ptr, out.data_.data(), bytes, cudaMemcpyHostToDevice, s), "cudaMemcpyAsync H2D");
+        recordEventIfNeeded(event, s);
+        if (owned) {
+            cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+        }
     }
 #endif
     return out;
 }
 
-tTile tTile::asyncCopyToGlobal() const {
+tTile tTile::asyncCopyToGlobal(CudaStream stream, CudaEvent event) const {
     tTile out(*this);
 #ifdef LADDER_ENABLE_CUDA
     if (device_ && device_->ptr) {
         size_t bytes = out.data_.size() * sizeof(float);
-        cudaCheck(cudaMemcpyAsync(out.data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost, nullptr), "cudaMemcpyAsync D2H");
+        bool owned = false;
+        auto s = getOrCreateStream(stream, owned);
+        cudaCheck(cudaMemcpyAsync(out.data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost, s), "cudaMemcpyAsync D2H");
+        recordEventIfNeeded(event, s);
+        if (owned) {
+            cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+        }
     }
 #endif
     return out;

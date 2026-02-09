@@ -4,6 +4,10 @@
 #include <string>
 #include <memory>
 
+#ifdef LADDER_ENABLE_CUDA
+#include <cuda_runtime.h>
+#endif
+
 namespace ladder {
 
 class tTile {
@@ -13,6 +17,14 @@ public:
         Blocked,
         Packed
     };
+
+#ifdef LADDER_ENABLE_CUDA
+    using CudaStream = cudaStream_t;
+    using CudaEvent = cudaEvent_t;
+#else
+    using CudaStream = void*;
+    using CudaEvent = void*;
+#endif
 
     tTile() = default;
     tTile(const std::vector<size_t>& shape);
@@ -41,11 +53,11 @@ public:
     const std::vector<size_t>& layoutParams() const;
 
     // explicit copy and prefetch/async copy (prototype interfaces)
-    tTile copyToLocal() const;
-    tTile copyToGlobal() const;
-    void prefetch(int level = 0) const;
-    tTile asyncCopyToLocal() const;
-    tTile asyncCopyToGlobal() const;
+    tTile copyToLocal(CudaStream stream = nullptr, CudaEvent event = nullptr) const;
+    tTile copyToGlobal(CudaStream stream = nullptr, CudaEvent event = nullptr) const;
+    void prefetch(int level = 0, CudaStream stream = nullptr, CudaEvent event = nullptr) const;
+    tTile asyncCopyToLocal(CudaStream stream = nullptr, CudaEvent event = nullptr) const;
+    tTile asyncCopyToGlobal(CudaStream stream = nullptr, CudaEvent event = nullptr) const;
 
 private:
     struct DeviceBuffer;

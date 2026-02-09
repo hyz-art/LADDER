@@ -6,6 +6,7 @@
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Support/LogicalResult.h"
 
@@ -29,6 +30,7 @@ int main(int argc, char **argv) {
   MLIRContext context;
   context.allowUnregisteredDialects();
   context.getOrLoadDialect<mlir::func::FuncDialect>();
+  context.getOrLoadDialect<mlir::arith::ArithDialect>();
   context.getOrLoadDialect<ladder::LadderDialect>();
 
   llvm::SourceMgr sourceMgr;
@@ -47,6 +49,7 @@ int main(int argc, char **argv) {
 
   PassManager pm(&context);
   pm.addPass(ladder::createLowerONNXToLadderPass());
+  pm.addPass(ladder::createLowerTileToRuntimePass());
 
   if (failed(pm.run(*module))) {
     llvm::errs() << "Pass pipeline failed\n";
