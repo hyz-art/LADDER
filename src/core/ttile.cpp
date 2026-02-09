@@ -143,6 +143,72 @@ tTile::LayoutKind tTile::layoutKind() const { return layout_; }
 
 const std::vector<size_t>& tTile::layoutParams() const { return layout_params_; }
 
+bool tTile::hasDevice() const {
+#ifdef LADDER_ENABLE_CUDA
+    return device_ && device_->ptr;
+#else
+    return false;
+#endif
+}
+
+void *tTile::devicePtr() const {
+#ifdef LADDER_ENABLE_CUDA
+    return device_ ? device_->ptr : nullptr;
+#else
+    return nullptr;
+#endif
+}
+
+size_t tTile::deviceBytes() const {
+#ifdef LADDER_ENABLE_CUDA
+    return device_ ? device_->bytes : 0;
+#else
+    return 0;
+#endif
+}
+
+void tTile::ensureDevice(CudaStream stream, CudaEvent event) {
+#ifdef LADDER_ENABLE_CUDA
+    if (device_ && device_->ptr)
+        return;
+    size_t bytes = data_.size() * sizeof(float);
+    if (bytes == 0) return;
+    device_ = std::make_unique<DeviceBuffer>(bytes);
+    if (device_ && device_->ptr) {
+        bool owned = false;
+        auto s = getOrCreateStream(stream, owned);
+        cudaCheck(cudaMemcpyAsync(device_->ptr, data_.data(), bytes, cudaMemcpyHostToDevice, s), "cudaMemcpyAsync H2D");
+        recordEventIfNeeded(event, s);
+        if (owned) {
+            cudaCheck(cudaStreamSynchronize(s), "cudaStreamSynchronize");
+            cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+        }
+    }
+#else
+    (void)stream;
+    (void)event;
+#endif
+}
+
+void tTile::ensureHost(CudaStream stream, CudaEvent event) {
+#ifdef LADDER_ENABLE_CUDA
+    if (!(device_ && device_->ptr))
+        return;
+    size_t bytes = data_.size() * sizeof(float);
+    bool owned = false;
+    auto s = getOrCreateStream(stream, owned);
+    cudaCheck(cudaMemcpyAsync(data_.data(), device_->ptr, bytes, cudaMemcpyDeviceToHost, s), "cudaMemcpyAsync D2H");
+    recordEventIfNeeded(event, s);
+    if (owned) {
+        cudaCheck(cudaStreamSynchronize(s), "cudaStreamSynchronize");
+        cudaCheck(cudaStreamDestroy(s), "cudaStreamDestroy");
+    }
+#else
+    (void)stream;
+    (void)event;
+#endif
+}
+
 tTile tTile::copyToLocal(CudaStream stream, CudaEvent event) const {
     tTile out(*this);
 #ifdef LADDER_ENABLE_CUDA

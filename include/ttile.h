@@ -59,6 +59,13 @@ public:
     tTile asyncCopyToLocal(CudaStream stream = nullptr, CudaEvent event = nullptr) const;
     tTile asyncCopyToGlobal(CudaStream stream = nullptr, CudaEvent event = nullptr) const;
 
+    // device accessors and helpers
+    bool hasDevice() const;
+    void *devicePtr() const;
+    size_t deviceBytes() const;
+    void ensureDevice(CudaStream stream = nullptr, CudaEvent event = nullptr);
+    void ensureHost(CudaStream stream = nullptr, CudaEvent event = nullptr);
+
 private:
     struct DeviceBuffer;
     std::vector<size_t> shape_;
