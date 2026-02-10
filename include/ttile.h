@@ -45,7 +45,9 @@ public:
     tTile slice(size_t dim, size_t start, size_t len) const;
     void pad(size_t dim, size_t pad_before, size_t pad_after, float value = 0.0f);
     template<typename Func>
-    void map(Func f);
+    void map(Func f) {
+        for (auto &v : data_) v = f(v);
+    }
 
     // layout metadata
     void setLayout(LayoutKind kind, const std::vector<size_t>& params = {});
@@ -67,7 +69,41 @@ public:
     void ensureHost(CudaStream stream = nullptr, CudaEvent event = nullptr);
 
 private:
-    struct DeviceBuffer;
+    struct DeviceBuffer {
+#ifdef LADDER_ENABLE_CUDA
+        void *ptr = nullptr;
+        size_t bytes = 0;
+        DeviceBuffer() = default;
+        explicit DeviceBuffer(size_t b) : bytes(b) {
+            cudaMalloc(&ptr, bytes);
+        }
+        ~DeviceBuffer() {
+            if (ptr) cudaFree(ptr);
+        }
+        DeviceBuffer(const DeviceBuffer&) = delete;
+        DeviceBuffer& operator=(const DeviceBuffer&) = delete;
+        DeviceBuffer(DeviceBuffer&& other) noexcept {
+            ptr = other.ptr;
+            bytes = other.bytes;
+            other.ptr = nullptr;
+            other.bytes = 0;
+        }
+        DeviceBuffer& operator=(DeviceBuffer&& other) noexcept {
+            if (this != &other) {
+                if (ptr) cudaFree(ptr);
+                ptr = other.ptr;
+                bytes = other.bytes;
+                other.ptr = nullptr;
+                other.bytes = 0;
+            }
+            return *this;
+        }
+#else
+        size_t bytes = 0;
+        DeviceBuffer() = default;
+        explicit DeviceBuffer(size_t b) : bytes(b) {}
+#endif
+    };
     std::vector<size_t> shape_;
     std::vector<float> data_;
     LayoutKind layout_ = LayoutKind::RowMajor;

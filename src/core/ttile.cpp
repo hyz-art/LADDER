@@ -36,41 +36,6 @@ static void recordEventIfNeeded(cudaEvent_t event, cudaStream_t stream) {
 }
 #endif
 
-struct tTile::DeviceBuffer {
-#ifdef LADDER_ENABLE_CUDA
-    void *ptr = nullptr;
-    size_t bytes = 0;
-    DeviceBuffer() = default;
-    explicit DeviceBuffer(size_t b) : bytes(b) {
-        cudaCheck(cudaMalloc(&ptr, bytes), "cudaMalloc");
-    }
-    ~DeviceBuffer() {
-        if (ptr) cudaFree(ptr);
-    }
-    DeviceBuffer(const DeviceBuffer&) = delete;
-    DeviceBuffer& operator=(const DeviceBuffer&) = delete;
-    DeviceBuffer(DeviceBuffer&& other) noexcept {
-        ptr = other.ptr;
-        bytes = other.bytes;
-        other.ptr = nullptr;
-        other.bytes = 0;
-    }
-    DeviceBuffer& operator=(DeviceBuffer&& other) noexcept {
-        if (this != &other) {
-            if (ptr) cudaFree(ptr);
-            ptr = other.ptr;
-            bytes = other.bytes;
-            other.ptr = nullptr;
-            other.bytes = 0;
-        }
-        return *this;
-    }
-#else
-    size_t bytes = 0;
-    DeviceBuffer() = default;
-    explicit DeviceBuffer(size_t b) : bytes(b) {}
-#endif
-};
 
 static size_t product(const std::vector<size_t>& v) {
     if (v.empty()) return 0;
@@ -129,10 +94,6 @@ void tTile::pad(size_t dim, size_t pad_before, size_t pad_after, float value) {
     data_.resize(new_size, value);
 }
 
-template<typename Func>
-void tTile::map(Func f) {
-    for (auto &v : data_) v = f(v);
-}
 
 void tTile::setLayout(LayoutKind kind, const std::vector<size_t>& params) {
     layout_ = kind;
@@ -300,8 +261,5 @@ tTile tTile::asyncCopyToGlobal(CudaStream stream, CudaEvent event) const {
 #endif
     return out;
 }
-
-// explicit instantiation for common lambdas
-template void tTile::map(std::function<float(float)> f);
 
 } // namespace ladder

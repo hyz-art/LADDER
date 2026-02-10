@@ -14,6 +14,10 @@ int main() {
 
     AutoTuner tuner;
     DeviceInfo dev; // defaults
+    std::cout << "DeviceInfo: L1="<<dev.l1_size<<" L2="<<dev.l2_size
+              <<" SM="<<dev.sm_count<<" warp="<<dev.warp_size
+              <<" bw(GB/s)="<<dev.mem_bandwidth_gbs
+              <<" peak(TF)="<<dev.peak_flops_tflops<<"\n";
     std::vector<tType::Precision> precisions = { tType::Precision::FP32, tType::Precision::FP16, tType::Precision::FP8 };
     std::vector<bool> fuse_opts = { false, true };
 

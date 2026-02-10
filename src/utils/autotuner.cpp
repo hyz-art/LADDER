@@ -88,27 +88,13 @@ TuningResult AutoTuner::tuneGEMMWithScheduler(size_t M, size_t N, size_t K,
                                               size_t numCandidates,
                                               const std::vector<float>* bias,
                                               int repeats) {
-    // Get base recommendation
-    auto base = Scheduler::recommendTiles(M,N,K,dev);
-    size_t baseM, baseN, baseK;
-    std::tie(baseM, baseN, baseK) = base;
-
-    // generate candidate triples around base (scale factors)
+    // Generate and rank candidates with cost model
+    auto ranked = Scheduler::rankCandidates(M, N, K, dev, std::max<size_t>(numCandidates, 8));
     std::vector<size_t> tileMs, tileNs, tileKs;
-    std::set<std::tuple<size_t,size_t,size_t>> seen;
-    std::vector<double> scales = {0.5, 0.75, 1.0, 1.5, 2.0};
-    for (double sM : scales) for (double sN : scales) for (double sK : std::vector<double>{0.5,1.0,2.0}) {
-        size_t tm = std::max((size_t)1, (size_t)(baseM * sM));
-        size_t tn = std::max((size_t)1, (size_t)(baseN * sN));
-        size_t tk = std::max((size_t)1, (size_t)(baseK * sK));
-        tm = std::min(tm, M); tn = std::min(tn, N); tk = std::min(tk, K);
-        auto tpl = std::make_tuple(tm,tn,tk);
-        if (seen.insert(tpl).second) {
-            tileMs.push_back(tm);
-            tileNs.push_back(tn);
-            tileKs.push_back(tk);
-        }
-        if (tileMs.size() >= numCandidates) break;
+    for (auto &c : ranked) {
+        tileMs.push_back(c.tileM);
+        tileNs.push_back(c.tileN);
+        tileKs.push_back(c.tileK);
     }
 
     return tuneGEMMAdvanced(M,N,K,A,B,C,tileMs,tileNs,tileKs,precisions,fuse_relu_options,bias,repeats);
