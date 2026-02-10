@@ -1,5 +1,8 @@
 #include "gemm.h"
 #include "ttile.h"
+#ifdef LADDER_ENABLE_CUDA
+#include "ladder/cuda_gemm.h"
+#endif
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -81,6 +84,11 @@ void gemm_tiled_fused_tiles(size_t M, size_t N, size_t K,
                            const std::vector<float>* bias,
                            bool apply_relu,
                            tType::Precision precision) {
+#ifdef LADDER_ENABLE_CUDA
+    if (gemm_tiled_fused_tiles_cuda(M, N, K, A, B, C, bias, apply_relu, precision)) {
+        return;
+    }
+#endif
     std::fill(C.begin(), C.end(), 0.0f);
     // iterate over tiles and use tTile for local operations
     for (size_t ii = 0; ii < M; ii += tileM) {
@@ -136,6 +144,11 @@ void gemm_tiled_fused_tiles_quantized(size_t M, size_t N, size_t K,
                                       const QuantParams& q,
                                       const std::vector<float>* bias,
                                       bool apply_relu) {
+#ifdef LADDER_ENABLE_CUDA
+    if (gemm_tiled_fused_tiles_quantized_cuda(M, N, K, A, B, C, q, bias, apply_relu)) {
+        return;
+    }
+#endif
     std::fill(C.begin(), C.end(), 0.0f);
     for (size_t ii = 0; ii < M; ii += tileM) {
         size_t mm = std::min(tileM, M - ii);
