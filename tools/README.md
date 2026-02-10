@@ -58,6 +58,28 @@ python3 tools/onnx_mlir_to_ladder_ir.py --onnx path/to/model.onnx --out-prefix l
 ./build/ladder-opt examples/ladder_tile_ops.mlir -o /tmp/ladder_tile_ops_out.mlir
 ```
 
+## CUDA 性能预设与环境变量
+
+支持通过环境变量选择性能组合：
+
+- `LADDER_PRESET=throughput`：吞吐优先（WMMA + async copy + TF32，tiles/块=4）
+- `LADDER_PRESET=accuracy`：精度优先（禁用 WMMA，启用 async copy，禁用 TF32）
+- `LADDER_PRESET=small`：小矩阵（WMMA 启用，async copy 关闭，tiles/块=1）
+- `LADDER_PRESET=large`：大矩阵（WMMA + async copy，tiles/块=4）
+
+可手动覆盖：
+
+- `LADDER_USE_WMMA=0/1`
+- `LADDER_USE_ASYNC_COPY=0/1`
+- `LADDER_USE_TF32=0/1`
+- `LADDER_WMMA_TILES_PER_BLOCK=1/4`
+
+示例：
+
+```bash
+LADDER_PRESET=throughput ./build/run_autotune
+```
+
 ## 闭环运行（MLIR-like → GEMM）
 
 构建：

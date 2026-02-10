@@ -7,6 +7,7 @@
 #include <mma.h>
 #include <vector>
 #include <cstdlib>
+#include <cstring>
 
 namespace ladder {
 
@@ -331,15 +332,54 @@ bool gemm_tiled_fused_tiles_cuda(size_t M, size_t N, size_t K,
   const float beta = 0.0f;
 
   const char *tf32Env = std::getenv("LADDER_USE_TF32");
-  bool useTf32 = tf32Env ? std::atoi(tf32Env) != 0 : true;
   const char *tileEnv = std::getenv("LADDER_USE_TILED_KERNEL");
-  bool useTiledKernel = tileEnv ? std::atoi(tileEnv) != 0 : false;
   const char *asyncEnv = std::getenv("LADDER_USE_ASYNC_COPY");
-  bool useAsyncCopy = asyncEnv ? std::atoi(asyncEnv) != 0 : false;
   const char *wmmaEnv = std::getenv("LADDER_USE_WMMA");
-  bool useWmma = wmmaEnv ? std::atoi(wmmaEnv) != 0 : false;
   const char *wmmaTilesEnv = std::getenv("LADDER_WMMA_TILES_PER_BLOCK");
+  const char *presetEnv = std::getenv("LADDER_PRESET");
+
+  bool useTf32 = tf32Env ? std::atoi(tf32Env) != 0 : true;
+  bool useTiledKernel = tileEnv ? std::atoi(tileEnv) != 0 : false;
+  bool useAsyncCopy = asyncEnv ? std::atoi(asyncEnv) != 0 : false;
+  bool useWmma = wmmaEnv ? std::atoi(wmmaEnv) != 0 : false;
   int wmmaTilesPerBlock = wmmaTilesEnv ? std::atoi(wmmaTilesEnv) : 0;
+
+  // Preset overrides (if provided)
+  if (presetEnv) {
+    if (std::strcmp(presetEnv, "throughput") == 0) {
+      useWmma = true;
+      useAsyncCopy = true;
+      useTf32 = true;
+      wmmaTilesPerBlock = 4;
+    } else if (std::strcmp(presetEnv, "accuracy") == 0) {
+      useWmma = false;
+      useAsyncCopy = true;
+      useTf32 = false;
+      wmmaTilesPerBlock = 1;
+    } else if (std::strcmp(presetEnv, "small") == 0) {
+      useWmma = true;
+      useAsyncCopy = false;
+      useTf32 = true;
+      wmmaTilesPerBlock = 1;
+    } else if (std::strcmp(presetEnv, "large") == 0) {
+      useWmma = true;
+      useAsyncCopy = true;
+      useTf32 = true;
+      wmmaTilesPerBlock = 4;
+    }
+  } else {
+    // Heuristic defaults when env not set
+    bool large = (M >= 256 && N >= 256 && K >= 256);
+    bool small = (M <= 128 || N <= 128 || K <= 128);
+    if (!wmmaEnv) useWmma = (precision == tType::Precision::FP16 || precision == tType::Precision::FP8);
+    if (!asyncEnv) useAsyncCopy = large;
+    if (!tf32Env) useTf32 = true;
+    if (!wmmaTilesEnv) wmmaTilesPerBlock = large ? 4 : 1;
+    if (small) {
+      useAsyncCopy = false;
+      if (!wmmaTilesEnv) wmmaTilesPerBlock = 1;
+    }
+  }
   if (tileK > 0 && tileK % 16 != 0)
     useWmma = false;
   if (tileM > 0 && tileN > 0 && tileK > 0) {
