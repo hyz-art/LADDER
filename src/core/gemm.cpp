@@ -85,7 +85,7 @@ void gemm_tiled_fused_tiles(size_t M, size_t N, size_t K,
                            bool apply_relu,
                            tType::Precision precision) {
 #ifdef LADDER_ENABLE_CUDA
-    if (gemm_tiled_fused_tiles_cuda(M, N, K, A, B, C, bias, apply_relu, precision)) {
+    if (gemm_tiled_fused_tiles_cuda(M, N, K, A, B, C, bias, apply_relu, precision, tileM, tileN, tileK)) {
         return;
     }
 #endif

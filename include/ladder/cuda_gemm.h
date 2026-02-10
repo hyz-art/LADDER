@@ -14,7 +14,10 @@ bool gemm_tiled_fused_tiles_cuda(size_t M, size_t N, size_t K,
                                 std::vector<float>& C,
                                 const std::vector<float>* bias,
                                 bool apply_relu,
-                                tType::Precision precision);
+                                tType::Precision precision,
+                                size_t tileM,
+                                size_t tileN,
+                                size_t tileK);
 
 bool gemm_tiled_fused_tiles_quantized_cuda(size_t M, size_t N, size_t K,
                                            const std::vector<float>& A,
