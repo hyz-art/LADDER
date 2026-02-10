@@ -5,6 +5,14 @@ include "ladder/IR/LadderDialect.td"
 
 class Ladder_Op<string mnemonic, list<Trait> traits = []> : Op<Ladder_Dialect, mnemonic, traits>;
 
+// elementwise add (for fusion)
+
+def Ladder_AddOp : Ladder_Op<"add"> {
+  let summary = "Elementwise add";
+  let arguments = (ins AnyTensor:$lhs, AnyTensor:$rhs);
+  let results = (outs AnyTensor:$out);
+}
+
 // scheduling primitives
 
 def Ladder_SliceOp : Ladder_Op<"slice"> {
@@ -105,6 +113,21 @@ def Ladder_DequantizeOp : Ladder_Op<"dequantize"> {
 def Ladder_GemmOp : Ladder_Op<"gemm"> {
   let summary = "Tile-level GEMM with tType precision/accumulation";
   let arguments = (ins AnyTensor:$A, AnyTensor:$B,
+                      I64Attr:$M, I64Attr:$N, I64Attr:$K,
+                      I64Attr:$tileM, I64Attr:$tileN, I64Attr:$tileK,
+                      StrAttr:$precision_a, StrAttr:$precision_b, StrAttr:$precision_c,
+                      StrAttr:$accumulate, StrAttr:$accumulate_partial,
+                      I64Attr:$accumulate_partial_block,
+                      F32Attr:$input_scale, F32Attr:$output_scale,
+                      StrAttr:$impl, I64Attr:$fuse_relu);
+  let results = (outs AnyTensor:$C);
+}
+
+// fused gemm + bias (+ relu)
+
+def Ladder_GemmFusedOp : Ladder_Op<"gemm_fused"> {
+  let summary = "Fused GEMM + Bias (+ReLU)";
+  let arguments = (ins AnyTensor:$A, AnyTensor:$B, AnyTensor:$Bias,
                       I64Attr:$M, I64Attr:$N, I64Attr:$K,
                       I64Attr:$tileM, I64Attr:$tileN, I64Attr:$tileK,
                       StrAttr:$precision_a, StrAttr:$precision_b, StrAttr:$precision_c,

@@ -5,6 +5,7 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
@@ -30,6 +31,7 @@ struct LowerTileToRuntimePass
       OpBuilder::InsertionGuard guard(builder);
       builder.setInsertionPointToStart(module.getBody());
       auto func = builder.create<func::FuncOp>(module.getLoc(), name, funcType);
+      func->setAttr(SymbolTable::getVisibilityAttrName(), builder.getStringAttr("private"));
       return func;
     };
 

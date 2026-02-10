@@ -36,6 +36,9 @@ target_include_directories(LadderDialect PUBLIC
 
 add_mlir_library(LadderTransforms
   ${PROJECT_SOURCE_DIR}/lib/Transforms/LowerONNXToLadder.cpp
+  ${PROJECT_SOURCE_DIR}/lib/Transforms/FuseLadderOps.cpp
+  ${PROJECT_SOURCE_DIR}/lib/Transforms/LowerFusedGemmToRuntime.cpp
+  ${PROJECT_SOURCE_DIR}/lib/Transforms/LowerTileToRuntime.cpp
   ${PROJECT_SOURCE_DIR}/lib/Transforms/Passes.cpp
   LINK_LIBS PUBLIC
     LadderDialect

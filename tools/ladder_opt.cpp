@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
 
   PassManager pm(&context);
   pm.addPass(ladder::createLowerONNXToLadderPass());
+  pm.addPass(ladder::createFuseLadderOpsPass());
+  pm.addPass(ladder::createLowerFusedGemmToRuntimePass());
   pm.addPass(ladder::createLowerTileToRuntimePass());
 
   if (failed(pm.run(*module))) {

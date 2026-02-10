@@ -89,6 +89,32 @@ struct LowerONNXToLadderPass
     ModuleOp module = getOperation();
     module.walk([&](Operation *op) {
       auto name = op->getName().getStringRef();
+      if (name == "onnx.Add") {
+        if (op->getNumOperands() < 2 || op->getNumResults() < 1)
+          return;
+
+        OpBuilder builder(op);
+        auto resultType = op->getResult(0).getType();
+        auto add = builder.create<ladder::AddOp>(
+            op->getLoc(), resultType, op->getOperand(0), op->getOperand(1));
+        op->getResult(0).replaceAllUsesWith(add.getResult());
+        op->erase();
+        return;
+      }
+
+      if (name == "onnx.Relu") {
+        if (op->getNumOperands() < 1 || op->getNumResults() < 1)
+          return;
+
+        OpBuilder builder(op);
+        auto resultType = op->getResult(0).getType();
+        auto map = builder.create<ladder::MapOp>(
+            op->getLoc(), resultType, op->getOperand(0),
+            builder.getStringAttr("relu"), builder.getArrayAttr({}));
+        op->getResult(0).replaceAllUsesWith(map.getResult());
+        op->erase();
+        return;
+      }
       if (name == "onnx.QuantizeLinear" || name == "onnx.DequantizeLinear") {
         if (op->getNumOperands() < 2 || op->getNumResults() < 1)
           return;
