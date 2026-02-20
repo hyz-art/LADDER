@@ -17,4 +17,40 @@ void gemm_tiled_fused(size_t M, size_t N, size_t K,
                       bool apply_relu = false,
                       tType::Precision precision = tType::Precision::FP32);
 
+// Implementation selector for tiled fused GEMM
+enum class GemmImpl { Loop, TTile };
+
+// Dispatcher: choose implementation
+void gemm_tiled_fused(size_t M, size_t N, size_t K,
+                      const std::vector<float>& A, const std::vector<float>& B, std::vector<float>& C,
+                      size_t tileM, size_t tileN, size_t tileK,
+                      GemmImpl impl,
+                      const std::vector<float>* bias = nullptr,
+                      bool apply_relu = false,
+                      tType::Precision precision = tType::Precision::FP32);
+
+// Tile-level variant that uses tTile objects for per-tile operations
+void gemm_tiled_fused_tiles(size_t M, size_t N, size_t K,
+                           const std::vector<float>& A, const std::vector<float>& B, std::vector<float>& C,
+                           size_t tileM, size_t tileN, size_t tileK,
+                           const std::vector<float>* bias = nullptr,
+                           bool apply_relu = false,
+                           tType::Precision precision = tType::Precision::FP32);
+
+// Quantization parameters for low-precision simulation
+struct QuantParams {
+    tType::Precision compute = tType::Precision::FP32;
+    tType::Precision accumulate = tType::Precision::FP32;
+    float input_scale = 1.0f;
+    float output_scale = 1.0f;
+};
+
+// Tile-level GEMM with explicit quantization/accumulation precision control
+void gemm_tiled_fused_tiles_quantized(size_t M, size_t N, size_t K,
+                                      const std::vector<float>& A, const std::vector<float>& B, std::vector<float>& C,
+                                      size_t tileM, size_t tileN, size_t tileK,
+                                      const QuantParams& q,
+                                      const std::vector<float>* bias = nullptr,
+                                      bool apply_relu = false);
+
 } // namespace ladder
